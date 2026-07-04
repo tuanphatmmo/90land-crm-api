@@ -17,27 +17,19 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
-// Initialize Database — MySQL nếu có env Railway, fallback SQLite khi dev local
-const isMysql = !!(process.env.MYSQLHOST || process.env.MYSQL_URL);
-
-const sequelize = isMysql
-  ? new Sequelize(
-      process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway',
-      process.env.MYSQLUSER || 'root',
-      process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD || '',
-      {
-        host: process.env.MYSQLHOST || 'mysql.railway.internal',
-        port: parseInt(process.env.MYSQLPORT || '3306'),
-        dialect: 'mysql',
-        logging: false,
-        dialectOptions: { connectTimeout: 60000 },
-      }
-    )
-  : new Sequelize({
-      dialect: 'sqlite',
-      storage: './database.sqlite',
-      logging: false,
-    });
+// Initialize Database — MySQL (Railway / Render)
+const sequelize = new Sequelize(
+  process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway',
+  process.env.MYSQLUSER || process.env.MYSQL_USER || 'root',
+  process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD || '',
+  {
+    host: process.env.MYSQLHOST || 'mysql.railway.internal',
+    port: parseInt(process.env.MYSQLPORT || '3306'),
+    dialect: 'mysql',
+    logging: false,
+    dialectOptions: { connectTimeout: 60000 },
+  }
+);
 
 // Define Models
 const User = sequelize.define('User', {
