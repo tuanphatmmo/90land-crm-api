@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.sqlite
+uploads/
+.env
+sheet_config.json
+test*.js
+alter_db*.js
+check_*.js
+clear_db.js
+drop_tables.js
