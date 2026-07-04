@@ -339,7 +339,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     for (const rNum of roomNums) {
       const existingRoom = await Room.findOne({ where: { BuildingId: currentBuilding.id, room_num: rNum } });
       if (existingRoom) {
-        await existingRoom.update({ price, type, status, area_m2: areaM2 });
+        await existingRoom.update({ price, type, status, area_m2: areaM2, furniture: note, services: dichvu });
         addedCount++;
       } else {
         await Room.create({
@@ -348,7 +348,9 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
           price,
           type,
           status,
-          area_m2: areaM2
+          area_m2: areaM2,
+          furniture: note,
+          services: dichvu
         });
         addedCount++;
       }
