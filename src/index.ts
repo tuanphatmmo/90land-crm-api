@@ -17,8 +17,7 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
-// Initialize Database — MySQL (Railway / Render)
-const sequelize = new Sequelize(
+const sequelize = process.env.NODE_ENV === 'production' ? new Sequelize(
   process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway',
   process.env.MYSQLUSER || process.env.MYSQL_USER || 'root',
   process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD || '',
@@ -29,7 +28,11 @@ const sequelize = new Sequelize(
     logging: false,
     dialectOptions: { connectTimeout: 60000 },
   }
-);
+) : new Sequelize({
+  dialect: 'sqlite',
+  storage: './database.sqlite',
+  logging: false
+});
 
 // Define Models
 const User = sequelize.define('User', {
