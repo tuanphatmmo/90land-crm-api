@@ -207,7 +207,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
       if ((h.includes('phòng') || h.includes('tên phòng')) && !h.includes('loại') && !h.includes('dạng') && colMap.room === undefined) colMap.room = j;
       if (h.includes('giá') && colMap.price === undefined) colMap.price = j;
       if ((h.includes('tình trạng') || h.includes('trạng thái') || h.includes('status') || h.includes('tgian vào ở')) && colMap.status === undefined) colMap.status = j;
-      if (h.includes('nội thất') && colMap.note === undefined) colMap.note = j;
+      if ((h.includes('nội thất') || h.includes('thông tin phòng') || h.includes('tiện nghi')) && colMap.note === undefined) colMap.note = j;
       if ((h.includes('dịch vụ') || h.includes('phí')) && colMap.service === undefined) colMap.service = j;
       if ((h.includes('ảnh') || h.includes('video')) && colMap.image === undefined) colMap.image = j;
       if (h.includes('diện tích') && colMap.area === undefined) colMap.area = j;
