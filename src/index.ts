@@ -196,9 +196,12 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
   for (let i = 0; i < Math.min(25, data.length); i++) {
     // Strip newlines so "TÌNH \nTRẠNG" matches "tình trạng"
     const rowStr = (data[i] || []).map((c: any) => String(c || '')).join(' ').replace(/\n/g, ' ').toLowerCase();
-    if ((rowStr.includes('phòng') || rowStr.includes('tên phòng') || rowStr.includes('phong')) && 
-        (rowStr.includes('giá') || rowStr.includes('gía') || rowStr.includes('gia')) && 
-        (rowStr.includes('tình trạng') || rowStr.includes('trạng thái') || rowStr.includes('status'))) {
+    
+    const hasRoom = rowStr.includes('phòng') || rowStr.includes('tên phòng') || rowStr.includes('phong');
+    const hasPrice = rowStr.includes('giá') || rowStr.includes('gía') || rowStr.includes('vnd');
+    const hasStatus = rowStr.includes('tình trạng') || rowStr.includes('hiện trạng') || rowStr.includes('trạng thái') || rowStr.includes('status') || rowStr.includes('t.trạng');
+    
+    if ((hasRoom && hasPrice && hasStatus) || (rowStr.includes('địa chỉ') && hasRoom && hasPrice && rowStr.includes('diện tích'))) {
       headerRowIdx = i;
       break;
     }
@@ -208,10 +211,10 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     const headers = data[headerRowIdx];
     for (let j = 0; j < headers.length; j++) {
       const h = (headers[j] || '').toString().toLowerCase();
-      if ((h.includes('địa chỉ') || h.includes('tòa') || h.includes('khu vực') || h.includes('dia chi')) && !colMap.address) colMap.address = j; 
+      if ((h.includes('địa chỉ') || h.includes('tòa') || h.includes('khu vực') || h.includes('dia chi')) && colMap.address === undefined) colMap.address = j; 
       if ((h.includes('phòng') || h.includes('tên phòng') || h.includes('phong')) && !h.includes('loại') && !h.includes('dạng') && colMap.room === undefined) colMap.room = j;
-      if ((h.includes('giá') || h.includes('gía') || h.includes('gia')) && colMap.price === undefined) colMap.price = j;
-      if ((h.includes('tình trạng') || h.includes('trạng thái') || h.includes('status') || h.includes('tgian vào ở')) && colMap.status === undefined) colMap.status = j;
+      if ((h.includes('giá') || h.includes('gía') || h.match(/\bgia\b/) || h.includes('vnd')) && !h.includes('thời gian') && colMap.price === undefined) colMap.price = j;
+      if ((h.includes('tình trạng') || h.includes('hiện trạng') || h.includes('trạng thái') || h.includes('status') || h.includes('tgian vào ở')) && colMap.status === undefined) colMap.status = j;
       if ((h.includes('nội thất') || h.includes('thông tin phòng') || h.includes('tiện nghi')) && colMap.note === undefined) colMap.note = j;
       if ((h.includes('dịch vụ') || h.includes('phí')) && !h.includes('hoa hồng') && !h.includes('hđ dịch vụ') && colMap.service === undefined) colMap.service = j;
       if ((h.includes('ảnh') || h.includes('video')) && colMap.image === undefined) colMap.image = j;
@@ -235,7 +238,12 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
         if(v.includes('m2')) scores[j].area++;
         if(v.length>30 && (v.includes('nội thất')||v.includes('điều hòa')||v.includes('nóng lạnh')||v.includes('giường'))) scores[j].note++;
         if(v.includes('dịch vụ')||v.includes('rác')||v.includes('vệ sinh')) scores[j].service++;
-        if(v.includes('ngõ')||v.includes('số')||v.includes('đường')) scores[j].address++;
+        
+        // Address heuristic: Must contain address keywords AND not be too long (to avoid notes/rules)
+        if(v.length < 80 && (v.match(/\bngõ\b/) || v.match(/\bsố\b/) || v.match(/\bđường\b/) || v.match(/\bphố\b/) || v.match(/\bngách\b/))) {
+           scores[j].address++;
+        }
+        
         if(v.includes('http')||v.includes('drive.google.com')||v.includes('zalo.me')) scores[j].image++;
       }
     }
