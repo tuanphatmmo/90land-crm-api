@@ -219,7 +219,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
 
   // Fallbacks if headers not found properly
   if (headerRowIdx === -1) {
-    let scores = Array(25).fill(0).map(()=>({room:0, price:0, status:0, note:0, area:0, service:0, address:0}));
+    let scores = Array(25).fill(0).map(()=>({room:0, price:0, status:0, note:0, area:0, service:0, address:0, image:0}));
     for(let i=0; i<Math.min(50, data.length); i++) {
       const row = data[i]||[];
       for(let j=0; j<Math.min(25, row.length); j++) {
@@ -233,6 +233,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
         if(v.length>30 && (v.includes('nội thất')||v.includes('điều hòa')||v.includes('nóng lạnh')||v.includes('giường'))) scores[j].note++;
         if(v.includes('dịch vụ')||v.includes('rác')||v.includes('vệ sinh')) scores[j].service++;
         if(v.includes('ngõ')||v.includes('số')||v.includes('đường')) scores[j].address++;
+        if(v.includes('http')||v.includes('drive.google.com')||v.includes('zalo.me')) scores[j].image++;
       }
     }
     const maxScore = (key: string) => {
@@ -247,6 +248,10 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     colMap.note = maxScore('note');
     colMap.service = maxScore('service');
     colMap.address = maxScore('address');
+    colMap.image = maxScore('image');
+
+    // Prevent overlap
+    if (colMap.address === colMap.price || colMap.address === colMap.room || colMap.address === colMap.status) colMap.address = undefined;
   }
 
   // Skip sheets that have absolutely no identifiable room or price data
@@ -264,6 +269,19 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
 
     // Skip completely empty rows
     if (row.length === 0) continue;
+
+    // Smart Address Extraction (Row with a single non-empty string is often a building address)
+    const nonNullCols = row.filter((x: any) => x && String(x).trim() !== '').length;
+    if (nonNullCols === 1 && headerRowIdx === -1) {
+      const val = String(row.find((x: any) => x && String(x).trim() !== '')).trim();
+      if (val.length > 5 && !val.toLowerCase().includes('danh sách') && !val.toLowerCase().includes('trục') && !val.toLowerCase().match(/^p?\d{3}$/)) {
+         currentAddress = val;
+         isNewAddress = true;
+         // Clean up random garbage that usually follows address
+         currentBuilding = null;
+         continue; 
+      }
+    }
 
     const rowArea = row[0] || row[1];
     if (rowArea && typeof rowArea === 'string' && rowArea.toUpperCase().startsWith('QUẬN')) {
