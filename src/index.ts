@@ -193,7 +193,9 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
   for (let i = 0; i < Math.min(25, data.length); i++) {
     // Strip newlines so "TÌNH \nTRẠNG" matches "tình trạng"
     const rowStr = (data[i] || []).map((c: any) => String(c || '')).join(' ').replace(/\n/g, ' ').toLowerCase();
-    if ((rowStr.includes('phòng') || rowStr.includes('tên phòng')) && rowStr.includes('giá') && (rowStr.includes('tình trạng') || rowStr.includes('trạng thái') || rowStr.includes('status'))) {
+    if ((rowStr.includes('phòng') || rowStr.includes('tên phòng') || rowStr.includes('phong')) && 
+        (rowStr.includes('giá') || rowStr.includes('gía') || rowStr.includes('gia')) && 
+        (rowStr.includes('tình trạng') || rowStr.includes('trạng thái') || rowStr.includes('status'))) {
       headerRowIdx = i;
       break;
     }
@@ -203,12 +205,12 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     const headers = data[headerRowIdx];
     for (let j = 0; j < headers.length; j++) {
       const h = (headers[j] || '').toString().toLowerCase();
-      if ((h.includes('địa chỉ') || h.includes('tòa') || h.includes('khu vực')) && !colMap.address) colMap.address = j; 
-      if ((h.includes('phòng') || h.includes('tên phòng')) && !h.includes('loại') && !h.includes('dạng') && colMap.room === undefined) colMap.room = j;
-      if (h.includes('giá') && colMap.price === undefined) colMap.price = j;
+      if ((h.includes('địa chỉ') || h.includes('tòa') || h.includes('khu vực') || h.includes('dia chi')) && !colMap.address) colMap.address = j; 
+      if ((h.includes('phòng') || h.includes('tên phòng') || h.includes('phong')) && !h.includes('loại') && !h.includes('dạng') && colMap.room === undefined) colMap.room = j;
+      if ((h.includes('giá') || h.includes('gía') || h.includes('gia')) && colMap.price === undefined) colMap.price = j;
       if ((h.includes('tình trạng') || h.includes('trạng thái') || h.includes('status') || h.includes('tgian vào ở')) && colMap.status === undefined) colMap.status = j;
       if ((h.includes('nội thất') || h.includes('thông tin phòng') || h.includes('tiện nghi')) && colMap.note === undefined) colMap.note = j;
-      if ((h.includes('dịch vụ') || h.includes('phí')) && colMap.service === undefined) colMap.service = j;
+      if ((h.includes('dịch vụ') || h.includes('phí')) && !h.includes('hoa hồng') && !h.includes('hđ dịch vụ') && colMap.service === undefined) colMap.service = j;
       if ((h.includes('ảnh') || h.includes('video')) && colMap.image === undefined) colMap.image = j;
       if (h.includes('diện tích') && colMap.area === undefined) colMap.area = j;
       if ((h.includes('loại') || h.includes('dạng')) && colMap.type === undefined) colMap.type = j;
@@ -216,17 +218,46 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
   }
 
   // Fallbacks if headers not found properly
-  if (colMap.address === undefined) colMap.address = 1;
-  if (colMap.room === undefined) colMap.room = 3;
-  if (colMap.price === undefined) colMap.price = 4;
-  if (colMap.status === undefined) colMap.status = 5;
+  if (headerRowIdx === -1) {
+    let scores = Array(25).fill(0).map(()=>({room:0, price:0, status:0, note:0, area:0, service:0, address:0}));
+    for(let i=0; i<Math.min(50, data.length); i++) {
+      const row = data[i]||[];
+      for(let j=0; j<Math.min(25, row.length); j++) {
+        const v = String(row[j]||'').toLowerCase();
+        if(!v || v==='null') continue;
+        if(v.match(/^(p\s*)?\d{3,4}$/i) && parseInt(v.replace(/\D/g,''))>100 && parseInt(v.replace(/\D/g,''))<9999) scores[j].room++;
+        if(!isNaN(parseFloat(v.replace(/,/g,''))) && parseFloat(v.replace(/,/g,''))>500000) scores[j].price++;
+        if(v.match(/\d+(?:\.\d+)?\s*(tr|triệu)/i)) scores[j].price++;
+        if(v.includes('trống')||v.includes('cọc')||v.includes('thuê')||v.includes('kín')||v.includes('full')||v.includes('now')) scores[j].status++;
+        if(v.includes('m2')) scores[j].area++;
+        if(v.length>30 && (v.includes('nội thất')||v.includes('điều hòa')||v.includes('nóng lạnh')||v.includes('giường'))) scores[j].note++;
+        if(v.includes('dịch vụ')||v.includes('rác')||v.includes('vệ sinh')) scores[j].service++;
+        if(v.includes('ngõ')||v.includes('số')||v.includes('đường')) scores[j].address++;
+      }
+    }
+    const maxScore = (key: string) => {
+      let max = 0; let col = undefined;
+      for(let j=0; j<25; j++) { if(scores[j][key as keyof typeof scores[0]] > max) { max = scores[j][key as keyof typeof scores[0]]; col = j; } }
+      return col;
+    };
+    colMap.room = maxScore('room');
+    colMap.price = maxScore('price');
+    colMap.status = maxScore('status');
+    colMap.area = maxScore('area');
+    colMap.note = maxScore('note');
+    colMap.service = maxScore('service');
+    colMap.address = maxScore('address');
+  }
+
+  // Skip sheets that have absolutely no identifiable room or price data
+  if (colMap.room === undefined && colMap.price === undefined) continue;
 
   let currentArea = 'Hà Nội';
   let currentAddress = '';
   let currentBuilding: any = null;
   let addedCount = 0;
-  
-  if (headerRowIdx === -1) continue; // Skip sheets without recognized headers
+  let currentNote = '';
+  let currentService = '';
 
   for (let i = headerRowIdx + 1; i < data.length; i++) {
     const row = data[i] || [];
@@ -240,12 +271,28 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
       continue;
     }
 
+    let isNewAddress = false;
     if (colMap.address !== undefined && row[colMap.address] && typeof row[colMap.address] === 'string') {
-      currentAddress = row[colMap.address];
+      if (currentAddress !== row[colMap.address]) {
+        currentAddress = row[colMap.address];
+        isNewAddress = true;
+      }
     }
 
     if (ws['!rows'] && ws['!rows'][i] && ws['!rows'][i].hidden) {
       continue;
+    }
+
+    if (isNewAddress) {
+      currentNote = '';
+      currentService = '';
+    }
+
+    if (colMap.note !== undefined && row[colMap.note] != null && String(row[colMap.note]).trim() !== '') {
+      currentNote = String(row[colMap.note]);
+    }
+    if (colMap.service !== undefined && row[colMap.service] != null && String(row[colMap.service]).trim() !== '') {
+      currentService = String(row[colMap.service]);
     }
 
     // Default address if none found
@@ -267,12 +314,21 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     }
     const type = colMap.type !== undefined ? row[colMap.type] : '';
     const roomNumRaw = row[colMap.room];
-    const priceStr = String(row[colMap.price] || '').replace(/,/g, '').replace(/\./g, '');
-    const price = parseFloat(priceStr);
+    const rawPriceCol = String(row[colMap.price] || '');
+    const priceStr = rawPriceCol.replace(/,/g, '').replace(/\./g, '');
+    let price = parseFloat(priceStr);
+    
+    // Extract 4tr3 -> 4300000
+    const trMatch = rawPriceCol.match(/(\d+)(?:tr|\.|,)(\d+)?(?:tr|triệu)?/i);
+    if(trMatch && rawPriceCol.toLowerCase().includes('tr')) {
+      let val = parseFloat(trMatch[1] + '.' + (trMatch[2]||'0'));
+      price = val * 1000000;
+    }
+
     const statusStr = colMap.status !== undefined ? row[colMap.status] : '';
     const areaM2 = colMap.area !== undefined ? row[colMap.area] : '';
-    const note = (colMap.note !== undefined ? (row[colMap.note] || '') : '');
-    const dichvu = (colMap.service !== undefined ? (row[colMap.service] || '') : '');
+    const note = currentNote;
+    const dichvu = currentService;
 
     const excelRow = i + 1;
     let imageLink = '';
@@ -328,11 +384,10 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     }
 
     let status = 'Trống';
-    if (statusStr && typeof statusStr === 'string') {
-      const s = statusStr.toLowerCase();
-      if (s.includes('cọc')) status = 'Đã cọc';
-      else if (s.includes('thuê') || s.includes('kín')) status = 'Đã thuê';
-    }
+    // Use both status column AND price column to infer status (in case they are merged)
+    const combinedStrForStatus = (String(statusStr || '') + ' ' + String(colMap.price !== undefined ? row[colMap.price] : '')).toLowerCase();
+    if (combinedStrForStatus.includes('cọc')) status = 'Đã cọc';
+    else if (combinedStrForStatus.includes('thuê') || combinedStrForStatus.includes('kín')) status = 'Đã thuê';
 
     const roomNums = String(roomNumRaw).split('\\n').map(r => r.trim()).filter(Boolean);
 
@@ -404,8 +459,15 @@ app.post('/api/sync-sheets', async (req: any, res: any) => {
         if (match) gidValue = match[1];
       }
       // Clean URL for export (remove /edit, query params, hash)
-      const baseUrl = urlToSync.split('/edit')[0].split('?')[0].split('#')[0];
-      urlToSync = baseUrl + '/export?format=xlsx';
+      if (urlToSync.includes('/file/d/')) {
+        const match = urlToSync.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) {
+          urlToSync = `https://docs.google.com/uc?export=download&id=${match[1]}`;
+        }
+      } else {
+        const baseUrl = urlToSync.split('/edit')[0].split('/htmlview')[0].split('?')[0].split('#')[0];
+        urlToSync = baseUrl + '/export?format=xlsx';
+      }
       fs.writeFileSync('sheet_config.json', JSON.stringify({ url: urlToSync, code: codeToSync, gid: gidValue }));
     }
 
