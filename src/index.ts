@@ -123,27 +123,6 @@ app.post('/api/buildings', async (req, res) => {
   }
 });
 
-app.put('/api/buildings/:id', async (req, res) => {
-  try {
-    const b = await Building.findByPk(req.params.id);
-    if (!b) return res.status(404).json({ error: 'Not found' });
-    await b.update(req.body);
-    res.json({ status: 'ok', data: b });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.delete('/api/buildings/:id', async (req, res) => {
-  try {
-    await Room.destroy({ where: { BuildingId: req.params.id } });
-    await Building.destroy({ where: { id: req.params.id } });
-    res.json({ status: 'ok' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // Bulk Update Buildings (HH)
 app.put('/api/buildings/bulk-update', async (req, res) => {
   try {
@@ -170,6 +149,29 @@ app.post('/api/buildings/bulk-delete', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+app.put('/api/buildings/:id', async (req, res) => {
+  try {
+    const b = await Building.findByPk(req.params.id);
+    if (!b) return res.status(404).json({ error: 'Not found' });
+    await b.update(req.body);
+    res.json({ status: 'ok', data: b });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/buildings/:id', async (req, res) => {
+  try {
+    await Room.destroy({ where: { BuildingId: req.params.id } });
+    await Building.destroy({ where: { id: req.params.id } });
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 
 // Rooms CRUD
 app.get('/api/rooms', async (req, res) => {
