@@ -144,6 +144,33 @@ app.delete('/api/buildings/:id', async (req, res) => {
   }
 });
 
+// Bulk Update Buildings (HH)
+app.put('/api/buildings/bulk-update', async (req, res) => {
+  try {
+    const { ids, updateData } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'No ids provided' });
+    
+    await Building.update(updateData, { where: { id: ids } });
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Bulk Delete Buildings
+app.post('/api/buildings/bulk-delete', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'No ids provided' });
+    
+    await Room.destroy({ where: { BuildingId: ids } });
+    await Building.destroy({ where: { id: ids } });
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Rooms CRUD
 app.get('/api/rooms', async (req, res) => {
   const rooms = await Room.findAll({ include: [Building] });
