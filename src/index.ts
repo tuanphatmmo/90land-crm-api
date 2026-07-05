@@ -269,6 +269,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
 
     // Skip completely empty rows
     if (row.length === 0) continue;
+    let isNewAddress = false;
 
     // Smart Address Extraction (Row with a single non-empty string is often a building address)
     const nonNullCols = row.filter((x: any) => x && String(x).trim() !== '').length;
@@ -289,7 +290,7 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
       continue;
     }
 
-    let isNewAddress = false;
+    let isNewAddress_placeholder = false; // Just to make sure logic matches, wait, actually I can just remove the declaration
     if (colMap.address !== undefined && row[colMap.address] && typeof row[colMap.address] === 'string') {
       if (currentAddress !== row[colMap.address]) {
         currentAddress = row[colMap.address];
