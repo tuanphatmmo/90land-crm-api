@@ -278,7 +278,15 @@ const processExcelData = async (buffer: any, customCode?: string, sheetGid?: str
     const nonNullCols = row.filter((x: any) => x && String(x).trim() !== '').length;
     if (nonNullCols === 1 && headerRowIdx === -1) {
       const val = String(row.find((x: any) => x && String(x).trim() !== '')).trim();
-      if (val.length > 5 && !val.toLowerCase().includes('danh sách') && !val.toLowerCase().includes('trục') && !val.toLowerCase().match(/^p?\d{3}$/)) {
+      
+      const vLower = val.toLowerCase();
+      const isLikelyAddress = (val.length > 5 && val.length < 80) && 
+                              (vLower.includes('ngõ') || vLower.includes('số') || 
+                               vLower.includes('đường') || vLower.includes('phố') || 
+                               val.match(/\d+\/\d+/) || vLower.match(/tòa/i) || vLower.match(/chung cư/i));
+      const isExcluded = vLower.match(/(điện|nước|mạng|wifi|dịch vụ|lưu ý|cơ chế|xe máy|xe điện|phí|nội thất|danh sách|trục|khách|cọc)/);
+
+      if (isLikelyAddress && !isExcluded && !vLower.match(/^p?\d{3}$/)) {
          currentAddress = val;
          isNewAddress = true;
          // Clean up random garbage that usually follows address
