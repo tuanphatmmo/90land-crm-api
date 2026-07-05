@@ -79,8 +79,8 @@ const Customer = sequelize.define('Customer', {
 User.hasMany(Customer, { foreignKey: 'saleId' });
 Customer.belongsTo(User, { as: 'Sale', foreignKey: 'saleId' });
 
-// Sync DB
-sequelize.sync({ alter: false }).then(async () => {
+// Sync DB — alter:true tự thêm column mới nếu thiếu
+sequelize.sync({ alter: true }).then(async () => {
   console.log('Database synced.');
   // Seed default users
   const adminExists = await User.findOne({ where: { username: 'admin' } });
