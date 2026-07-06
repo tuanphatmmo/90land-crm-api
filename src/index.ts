@@ -126,6 +126,25 @@ app.post('/api/register', async (req, res) => {
 // Routes
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Users CRUD
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.findAll();
+    res.json({ status: 'ok', data: users });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.destroy({ where: { id: req.params.id } });
+    res.json({ status: 'ok' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Buildings CRUD
 app.get('/api/buildings', async (req, res) => {
   const buildings = await Building.findAll({ include: [Room] });
