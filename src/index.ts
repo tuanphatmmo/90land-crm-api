@@ -104,6 +104,24 @@ app.post('/api/login', async (req, res) => {
   res.json({ status: 'ok', data: { id: (user as any).id, username: (user as any).username, role: (user as any).role, name: (user as any).name } });
 });
 
+app.post('/api/register', async (req, res) => {
+  const { username, password, name } = req.body;
+  try {
+    const existing = await User.findOne({ where: { username } });
+    if (existing) return res.status(400).json({ error: 'Tài khoản đã tồn tại' });
+    
+    const user = await User.create({ 
+      username, 
+      password, 
+      name: name || username,
+      role: 'sale' 
+    });
+    res.json({ status: 'ok', message: 'Đăng ký thành công', data: { id: (user as any).id, username: (user as any).username, role: (user as any).role, name: (user as any).name } });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Lỗi hệ thống: ' + error.message });
+  }
+});
+
 
 // Routes
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
