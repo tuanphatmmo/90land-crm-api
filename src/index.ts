@@ -54,6 +54,9 @@ const Building = sequelize.define('Building', {
   commission: { type: DataTypes.STRING, defaultValue: '50%' },
   note: { type: DataTypes.TEXT },
   image_link: { type: DataTypes.TEXT },
+  depositOne: { type: DataTypes.STRING },
+  contractDuration: { type: DataTypes.STRING },
+  petAllowed: { type: DataTypes.STRING },
 });
 
 const Room = sequelize.define('Room', {
